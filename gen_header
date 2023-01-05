@@ -1,0 +1,97 @@
+#!/usr/bin/env python3
+## syncs .h files with .c files and creates new .h files accordingly
+## does not work with file names containing spaces
+
+from os import popen, listdir, getcwd, system
+from os.path import split, splitext, join, exists
+from sys import argv as av
+av.pop(0)
+ac = len(av)
+
+header_comment = '''/*
+** EPITECH PROJECT, 2022
+** {}
+** File description:
+** {}
+*/\n
+'''
+
+header_guard = '''#ifndef {}
+    #define {}
+'''
+
+help_message = '''USAGE
+    ./gen_header [SRC] [DEST] [RECURSIVE]
+DESCRIPTION
+    src         folder where the program will look for .c files
+    dest        folder where the .h files will be generated
+    recursive   1 to look for .c files recursively and 0 to only
+                search inside of the dest folder
+
+    files containing spaces in their name are unsupported and will be ignored.
+    "main" functions will be ignored.'''
+
+def create_header_file(src, dest):
+    file_name = splitext(split(src)[-1])[0]
+    if file_name == 'main':
+        return
+
+    if file_name.count(' ') > 0:
+        print(f"Name with space detected. Abroting ({file_name})")
+        return
+
+    folder_name = split(getcwd())[-1]
+    header = header_comment.format(folder_name, f"header file for {file_name}.c")
+    file_path = join(dest, file_name + ".h")
+    guard_name = f"{file_name.upper()}_H_"
+    guard = header_guard.format(guard_name, guard_name)
+
+    system(f'echo "{header + guard}" > "{file_path}"')
+    prototypes = popen(f'cproto "{src}"').read()
+
+    func_prototype = prototypes.splitlines(True)
+    func_prototype.pop(0)
+    prototypes = ""
+
+    for line in func_prototype:
+        if (not " main(" in line):
+            prototypes += line
+
+    system(f'echo "{prototypes}" >> "{file_path}"')
+    system(f'echo "#endif /* !{guard_name} */" >> "{file_path}"')
+
+def create_all_headers(src, dest, recursive):
+    for file_name in listdir(src):
+        if file_name.endswith(".c"):
+            create_header_file(join(src, file_name), dest)
+
+        if recursive == 0:
+            continue
+
+        is_dir = 0
+        try:
+            listdir(join(src, file_name))
+            is_dir = 1
+        except:
+            pass
+
+        if is_dir:
+            create_all_headers(join(src, file_name), dest, 1)
+
+def main():
+    if ac == 1 and av[0] == '-h':
+        print(help_message)
+        return 0
+
+    if ac != 3 or not av[2] in ['0', '1']:
+        print("ERROR: invalid arguments")
+        return 84
+
+    if not exists(av[0]) or not exists(av[0]):
+        print("ERROR: path does not exist")
+        return 84
+
+    create_all_headers(av[0], av[1], int(av[2]))
+    return 0
+
+main()
