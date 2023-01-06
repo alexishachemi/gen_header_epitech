@@ -2,96 +2,164 @@
 ## syncs .h files with .c files and creates new .h files accordingly
 ## does not work with file names containing spaces
 
-from os import popen, listdir, getcwd, system
+from os import popen, walk, getcwd, system, listdir
 from os.path import split, splitext, join, exists
 from sys import argv as av
 av.pop(0)
 ac = len(av)
+merge = ac == 4
+
+include_flag = "/*INCLUDE*/\n"
+prototype_flag = "/*PROTOTYPES*/\n"
 
 header_comment = '''/*
 ** EPITECH PROJECT, 2022
 ** {}
 ** File description:
 ** {}
-*/\n
+*/
+
+/*INCLUDE*/
+
 '''
 
 header_guard = '''#ifndef {}
     #define {}
+
+/*PROTOTYPES*/
 '''
 
 help_message = '''USAGE
-    ./gen_header [SRC] [DEST] [RECURSIVE]
+    ./gen_header SRC DEST RECURSIVE [MERGE]
 DESCRIPTION
     src         folder where the program will look for .c files
     dest        folder where the .h files will be generated
     recursive   1 to look for .c files recursively and 0 to only
                 search inside of the dest folder
+    merge       (optional) if a name is provided all prototypes and
+                includes will be put on a single .h file with the 
+                given name
 
     files containing spaces in their name are unsupported and will be ignored.
-    "main" functions will be ignored.'''
+    "main" functions and main.c files will be ignored.'''
 
-def create_header_file(src, dest):
-    file_name = splitext(split(src)[-1])[0]
-    if file_name == 'main':
+def get_insert_line(lines, flag):
+    insert_line = 0
+    found_flag = False
+    for l in enumerate(lines):
+        if flag == l[1]:
+            found_flag = True
+            insert_line = l[0] + 1
+        
+        if found_flag and l[1] == "":
+            insert_line = l[0]
+            break
+    
+    return insert_line
+
+def add_includes_to_header(src, header_path):
+    with open(header_path, 'r') as f:
+        lines = f.readlines()
+    
+    with open(src, "r") as f:
+        includes = [l for l in f.readlines() if l.startswith("#include")]
+
+    header_includes = [l for l in lines if l.startswith("#include")]
+
+    insert_line = get_insert_line(lines, include_flag)
+
+    for i in includes:
+        if not i in header_includes:
+            lines.insert(insert_line, i)
+            insert_line += 1
+
+    with open(header_path, "w") as f:
+        f.writelines(lines)
+
+def add_proto_to_header(src, header_path):
+    prototypes = popen(f'cproto "{src}"').read().splitlines()
+    
+    for p in enumerate(prototypes):
+        if p[1].startswith("int main("):
+            print(f"gen_header: ignored main function in {src}")
+            prototypes.pop(p[0])
+
+    with open(header_path, 'r') as f:
+        lines = f.readlines()
+
+    insert_line = get_insert_line(lines, prototype_flag)
+
+    for p in prototypes:
+        if not p + '\n' in lines:
+            lines.insert(insert_line, p + '\n')
+            insert_line += 1
+
+    with open(header_path, "w") as f:
+        f.writelines(lines)
+
+def add_all_to_header(src, header_path):
+    if header_path == None:
         return
 
-    if file_name.count(' ') > 0:
-        print(f"Name with space detected. Abroting ({file_name})")
-        return
+    add_includes_to_header(src, header_path)
+    add_proto_to_header(src, header_path)
+
+def create_header_file(file_name, dest):
+    if file_name == 'main.c':
+        print("gen_header: ignored main.c file")
+        return None
+    
+    if ' ' in file_name:
+        print(f"gen_header: ignored file name containing spaces ({file_name})")
+        return None
 
     folder_name = split(getcwd())[-1]
-    header = header_comment.format(folder_name, f"header file for {file_name}.c")
-    file_path = join(dest, file_name + ".h")
+    file_path = join(dest, splitext(file_name)[0] + ".h")
+
+    header = header_comment.format(folder_name, f"{file_name}")
     guard_name = f"{file_name.upper()}_H_"
     guard = header_guard.format(guard_name, guard_name)
-
     system(f'echo "{header + guard}" > "{file_path}"')
-    prototypes = popen(f'cproto "{src}"').read()
-
-    func_prototype = prototypes.splitlines(True)
-    func_prototype.pop(0)
-    prototypes = ""
-
-    for line in func_prototype:
-        if (not " main(" in line):
-            prototypes += line
-
-    system(f'echo "{prototypes}" >> "{file_path}"')
     system(f'echo "#endif /* !{guard_name} */" >> "{file_path}"')
+    return file_path
 
-def create_all_headers(src, dest, recursive):
-    for file_name in listdir(src):
-        if file_name.endswith(".c"):
-            create_header_file(join(src, file_name), dest)
+def gen_header(src, dest, recursive):
+    if merge:
+        header_path = create_header_file(av[3], dest)
 
-        if recursive == 0:
-            continue
-
-        is_dir = 0
-        try:
-            listdir(join(src, file_name))
-            is_dir = 1
-        except:
-            pass
-
-        if is_dir:
-            create_all_headers(join(src, file_name), dest, 1)
+    if (recursive == 0):
+        for file_name in listdir(src):
+            path = join(src, file_name)
+            if file_name.endswith(".c"):
+                if merge:
+                    add_all_to_header(path, header_path)
+                else:
+                    add_all_to_header(path, create_header_file(file_name, dest))
+        return
+    
+    for root, subdir, files in walk(src):
+        for f in files:
+            path = join(root, f)
+            if merge:
+                add_all_to_header(path, header_path)
+            else:
+                file_name = splitext(split(path)[-1])[0]
+                add_all_to_header(path, create_header_file(file_name, dest))
 
 def main():
     if ac == 1 and av[0] == '-h':
         print(help_message)
         return 0
 
-    if ac != 3 or not av[2] in ['0', '1']:
-        print("ERROR: invalid arguments")
+    if not ac in [3, 4] or not av[2] in ['0', '1']:
+        print("gen_header: invalid arguments")
         return 84
 
-    if not exists(av[0]) or not exists(av[0]):
-        print("ERROR: path does not exist")
+    if not exists(av[0]) or not exists(av[1]):
+        print("gen_header: path does not exist")
         return 84
 
-    create_all_headers(av[0], av[1], int(av[2]))
+    gen_header(av[0], av[1], int(av[2]))
     return 0
 
 main()
