@@ -32,12 +32,14 @@ help_message = '''USAGE
 DESCRIPTION
     src         folder where the program will look for .c files.
     dest        folder where the .h files will be generated.
-    option      -m [FILE]   prototypes and includes will be put
-                            on a single .h file with the given name.
-                -t          add the title of the file in the header.
-                -r          look for .c files recursively.
-                -i          do NOT ignore main.c files and main functions
+    option      
                 -h          display this message.
+                -i          do NOT ignore main.c files and main functions
+                -I          add includes to the .h file
+                -m [FILE]   prototypes and includes will be put
+                            on a single .h file with the given name.
+                -r          look for .c files recursively.
+                -t          add the title of the file in the header.
 
 files containing spaces in their name are unsupported and will be ignored.'''
 
@@ -112,7 +114,8 @@ def add_all_to_header(src, header_path, options):
     if header_path == None:
         return
 
-    add_includes_to_header(src, header_path)
+    if options["include"]:
+        add_includes_to_header(src, header_path)
     add_proto_to_header(src, header_path, options)
 
 def create_header_file(file_name, dest, options):
@@ -165,6 +168,7 @@ def get_options():
         "title": False,
         "recursive": False,
         "ignore": True,
+        "include": False,
         "merge": [False, None]
     }
     pop_index = []
@@ -180,6 +184,9 @@ def get_options():
             pop_index.append(arg[0])
         if arg[1] == '-i':
             options["ignore"] = False
+            pop_index.append(arg[0])
+        if arg[1] == '-I':
+            options["include"] = True
             pop_index.append(arg[0])
         if arg[1] == '-m':
             options["merge"][0] = True
