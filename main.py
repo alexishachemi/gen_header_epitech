@@ -25,7 +25,7 @@ DESCRIPTION
 
 files containing spaces in their name are unsupported and will be ignored.'''
 
-def add_file_info(file_path, dest, header):
+def add_file_header(file_path, dest, header):
     file_name = os.path.split(file_path)[1].removesuffix(".c")
     header_info = get_header_info(file_path)
 
@@ -39,20 +39,15 @@ def add_file_info(file_path, dest, header):
         insert_lines(header, include_flag, header_info[0])
         insert_lines(header, prototype_flag, header_info[1])
 
-def get_header_rec_loop(src, dest, header):
-    for dir_path, dir_names, file_names in os.walk(src):
-        for d in dir_names:
-            get_header_rec_loop(os.path.join(dir_path, d), dest, header)
-        for f in file_names:
-            if (options["ignore"] and f == "main.c") or not f.endswith(".c"):
-                continue
-            add_file_info(os.path.join(dir_path, f), dest, header)
-
 def gen_headers_rec(src, dest):
     header = None
     if options["merge"][0]:
         header = create_empty_header(options["merge"][1])
-    get_header_rec_loop(src, dest, header)
+    for dir_path, dir_names, file_names in os.walk(src):
+        for f in file_names:
+            if (options["ignore"] and f == "main.c") or not f.endswith(".c"):
+                continue
+            add_file_header(os.path.join(dir_path, f), dest, header)
     if options["merge"][0]:
         remove_flags(header)
         write_header(dest, options["merge"][1], header)
@@ -64,7 +59,7 @@ def gen_headers(src, dest):
     for f in os.listdir(src):
         if (options["ignore"] and f == "main.c") or not f.endswith(".c"):
             continue
-        add_file_info(os.path.join(src, f), dest, header)
+        add_file_header(os.path.join(src, f), dest, header)
     if options["merge"][0]:
         remove_flags(header)
         write_header(dest, options["merge"][1], header)
@@ -76,11 +71,14 @@ def main():
     if options["help"] or ac == 0:
         print(help_message)
         exit(0)
-    if ac != 2:
+    if ac != 2 or not os.path.exists(av[0]) or not os.path.exists(av[1]):
         exit(84)
-    if not os.path.exists(av[0]) or not os.path.exists(av[1]):
-        exit(84)
-    if options["recursive"]:
+    if not os.path.isdir(av[0]):
+        if av[0].endswith(".c"):
+            add_file_header(av[0], av[1], None)
+        else:
+            exit(84)
+    elif options["recursive"]:
         gen_headers_rec(av[0], av[1])
     else:
         gen_headers(av[0], av[1])

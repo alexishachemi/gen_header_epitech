@@ -44,5 +44,5 @@ def get_header_info(file_path):
         includes = extract_include(source_file)
     proto = extract_proto(source_file)
     if options["title"]:
-        proto.insert(0, file_path)
+        proto.insert(0, f"/* {file_path} */")
     return [includes, proto]
