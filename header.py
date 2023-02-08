@@ -1,8 +1,9 @@
 import os
 from options import options
 from file_handling import *
+from datetime import date
 
-header_comment = "/*\n** EPITECH PROJECT, 2022\n** {}\n** File description:\n** {}\n*/"
+header_comment = "/*\n** EPITECH PROJECT, {}\n** {}\n** File description:\n** {}\n*/"
 header_guard = "\n#ifndef {}\n\t#define {}\n/*INCLUDE*/\n/*PROTOTYPES*/\n\n"
 include_flag = "/*INCLUDE*/"
 prototype_flag = "/*PROTOTYPES*/"
@@ -10,7 +11,7 @@ prototype_flag = "/*PROTOTYPES*/"
 def create_empty_header(file_name):
     folder_name = os.path.split(os.getcwd())[1]
     guard_name = file_name.upper() + '_'
-    formatted_comment = header_comment.format(folder_name, file_name)
+    formatted_comment = header_comment.format(date.today().year, folder_name, file_name)
     formatted_guard = header_guard.format(guard_name, guard_name)
     header = formatted_comment.splitlines() + formatted_guard.splitlines()
     header.append(f"#endif /* !{guard_name} */")
