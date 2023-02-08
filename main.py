@@ -21,8 +21,7 @@ DESCRIPTION
                             on a single header file with the given name.
                 -r          look for C source files recursively.
                 -t          add the title of the file in the header.
-
-files containing spaces in their name are unsupported and will be ignored.'''
+'''
 
 def add_file_header(file_path, dest, header):
     file_name = os.path.split(file_path)[1].removesuffix(".c")
