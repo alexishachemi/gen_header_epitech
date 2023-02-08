@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-## syncs .h files with .c files and creates new .h files accordingly
+## syncs .h files with C source files and creates new .h files accordingly
 ## does not work with file names containing spaces
 
 import os
-from sys import argv as av
+from sys import argv as av, exit
 from file_handling import *
 from header import *
 from options import set_options, options
@@ -12,15 +12,15 @@ av.pop(0)
 help_message = '''USAGE
     ./gen_header [OPTION] SRC DEST
 DESCRIPTION
-    src         folder where the program will look for .c files.
-    dest        folder where the .h files will be generated.
+    src         target C source file or folder where the program will look for files.
+    dest        folder where the header files will be generated.
     option      
                 -h          display this message.
-                -i          do NOT ignore main.c files and main functions
-                -I          add includes to the .h file
+                -i          do ignore main.c files and main functions
+                -I          add includes to the header file
                 -m [FILE]   prototypes and includes will be put
-                            on a single .h file with the given name.
-                -r          look for .c files recursively.
+                            on a single header file with the given name.
+                -r          look for C source files recursively.
                 -t          add the title of the file in the header.
 
 files containing spaces in their name are unsupported and will be ignored.'''
@@ -64,24 +64,36 @@ def gen_headers(src, dest):
         remove_flags(header)
         write_header(dest, options["merge"][1], header)
 
+def get_path(ac):
+    src = '.'
+    dest = '.'
+    if ac > 0:
+        src = av[0]
+    if ac == 2:
+        dest = av[1]
+    if ac > 2:
+        exit(84)
+    if not os.path.exists(src) or not os.path.exists(dest):
+        exit(84)
+    return [src, dest]
+
 def main():
     if set_options(av) == -1:
         exit(84)
     ac = len(av)
-    if options["help"] or ac == 0:
+    if options["help"]:
         print(help_message)
         exit(0)
-    if ac != 2 or not os.path.exists(av[0]) or not os.path.exists(av[1]):
-        exit(84)
-    if not os.path.isdir(av[0]):
+    path = get_path(ac)
+    if not os.path.isdir(path[0]):
         if av[0].endswith(".c"):
-            add_file_header(av[0], av[1], None)
+            add_file_header(path[0], path[1], None)
         else:
             exit(84)
     elif options["recursive"]:
-        gen_headers_rec(av[0], av[1])
+        gen_headers_rec(path[0], path[1])
     else:
-        gen_headers(av[0], av[1])
+        gen_headers(path[0], path[1])
     exit(0)
 
 if __name__ == "__main__":
