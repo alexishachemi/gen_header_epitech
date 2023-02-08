@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 ## syncs .h files with C source files and creates new .h files accordingly
-## does not work with file names containing spaces
 
 import os
 from sys import argv as av, exit
