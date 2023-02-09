@@ -15,9 +15,9 @@ DESCRIPTION
     dest        folder where the header files will be generated.
     option      
                 -h          display this message.
-                -i          do ignore main.c files and main functions
+                -i          ignore "main.c" files
                 -I          add includes to the header file
-                -m [FILE]   prototypes and includes will be put
+                -m [NAME]   prototypes and includes will be put
                             on a single header file with the given name.
                 -r          look for C source files recursively.
                 -t          add the title of the file in the header.

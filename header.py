@@ -20,8 +20,10 @@ def create_empty_header(file_name):
 def insert_lines(header, flag, lines):
     offset = 1
     for l in enumerate(header):
-        if l[1] == flag:
-            for line in lines:
+        if not l[1] == flag:
+            continue
+        for line in lines:
+            if not line in header:
                 header.insert(l[0] + offset, line)
                 offset += 1
 
